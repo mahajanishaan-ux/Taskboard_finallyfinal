@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function validTask(d) {
+      return d.keys().hasAll(['title', 'status'])
+        && d.title is string
+        && d.title.size() > 0
+        && d.title.size() <= 500
+        && d.status in ['pending', 'completed']
+        && (!('dueDate' in d) || d.dueDate == null ||
+            (d.dueDate is string && d.dueDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')));
+    }
+
+    match /tasks/{taskId} {
+      allow read: if true;
+      allow create, update: if validTask(request.resource.data);
+      allow delete: if true;
+    }
+
+    // Everything else is locked.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
